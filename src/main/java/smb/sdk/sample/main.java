@@ -42,6 +42,7 @@ public class main
         }
         catch (Exception e)
         {
+            Utils.writeErrorMessage(e.getMessage());
         }
 
         System.exit(0);
@@ -61,7 +62,7 @@ public class main
         String subnetName = "anf-sn";
         String anfAccountName = "test-account01";
         String capacityPoolName = "test-pool01";
-        String capacityPoolServiceLevel = "Standard";
+        String capacityPoolServiceLevel = "Premium"; // Valid service levels are: Ultra, Premium, Standard
         String volumeName = "test-vol01";
 
         long capacityPoolSize = 4398046511104L;  // 4TiB which is minimum size
@@ -152,7 +153,7 @@ public class main
             }
             catch (Exception e)
             {
-                Utils.writeConsoleMessage("An error occurred while creatin capacity pool: " + e.getMessage());
+                Utils.writeConsoleMessage("An error occurred while creating capacity pool: " + e.getMessage());
                 throw e;
             }
         }
@@ -187,7 +188,7 @@ public class main
             }
             catch (Exception e)
             {
-                Utils.writeErrorMessage("An error occurred while creating volume: " + e.getMessage());
+                Utils.writeConsoleMessage("An error occurred while creating volume: " + e.getMessage());
                 throw e;
             }
         }
@@ -223,9 +224,6 @@ public class main
             anfClient.pools().delete(resourceGroupName, anfAccountName, capacityPoolName);
             CommonSdk.waitForNoANFResource(anfClient, capacityPool.id(), CapacityPoolInner.class);
             Utils.writeSuccessMessage("Capacity Pool successfully deleted: " + capacityPool.id());
-
-            Utils.writeConsoleMessage("Waiting for 30 seconds before deleting Accounts to make sure all nested resources have been removed...");
-            Utils.threadSleep(30000);
 
             Utils.writeConsoleMessage("Deleting ANF Account...");
             anfClient.accounts().delete(resourceGroupName, anfAccountName);

@@ -98,7 +98,7 @@ public class CommonSdk
     {
         for (int i = 0; i < retries; i++)
         {
-            Utils.threadSleep(intervalInSec*1000);
+            Utils.threadSleep(intervalInSec*2000);
 
             try
             {
