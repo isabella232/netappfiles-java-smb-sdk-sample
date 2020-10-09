@@ -62,7 +62,7 @@ public class main
         String subnetName = "anf-sn";
         String anfAccountName = "test-account01";
         String capacityPoolName = "test-pool01";
-        String capacityPoolServiceLevel = "Premium"; // Valid service levels are: Ultra, Premium, Standard
+        String capacityPoolServiceLevel = "Standard"; // Valid service levels are: Ultra, Premium, Standard
         String volumeName = "test-vol01";
 
         long capacityPoolSize = 4398046511104L;  // 4TiB which is minimum size
