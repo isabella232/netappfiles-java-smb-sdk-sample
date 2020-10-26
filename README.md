@@ -36,7 +36,7 @@ If you don't already have a Microsoft Azure subscription, you can get a FREE tri
 Instructions on setting JAVA_HOME can be found [here](https://mkyong.com/java/how-to-set-java_home-on-windows-10/) for windows,
 and [here](https://mkyong.com/java/how-to-set-java_home-environment-variable-on-mac-os-x/) for macOS.
 1. Azure subscription
-1. Subscription needs to be whitelisted for Azure NetApp Files. For more information, please refer to
+1. Subscription needs to be enabled for Azure NetApp Files. For more information, please refer to
 [this](https://docs.microsoft.com/azure/azure-netapp-files/azure-netapp-files-register#waitlist) document
 1. Resource Group created
 1. Virtual Network with a delegated subnet to Microsoft.Netapp/volumes resource. For more information. please refer to
