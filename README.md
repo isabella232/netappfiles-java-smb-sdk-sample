@@ -8,7 +8,7 @@ products:
 description: "This project demonstrates how to create an SMB Volume for Microsoft.NetApp resource provider using Java SDK."
 ---
 
-# Azure NetAppFiles SDK for Java
+# Azure NetAppFiles SDK Sample - SMB Volume for Java
 
 This project demonstrates how to use a Java sample application to create an SMB Volume for the Microsoft.NetApp
 resource provider.
