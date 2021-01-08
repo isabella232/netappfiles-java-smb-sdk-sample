@@ -5,7 +5,7 @@ languages:
 products:
 - azure
 - azure-netapp-files
-description: "This project demonstrates how to create an SMB volume for Microsoft.NetApp resource provider using Java SDK."
+description: "This project demonstrates how to create an SMB volume for Microsoft.NetApp resource provider using Java SDK." 
 ---
 
 # Azure NetApp Files SDK Sample - SMB Volume for Java
@@ -54,7 +54,7 @@ and [instructions on setting JAVA_HOME for macOS](https://mkyong.com/java/how-to
     1. Create a service principal using Azure CLI:
         ```bash
         az ad sp create-for-rbac --sdk-auth
-        ```
+        ``` 
        
        >Note: This command will automatically assign RBAC contributor role to the service principal at subscription level.
        You can narrow down the scope to the specific resource group where your tests will create the resources.
