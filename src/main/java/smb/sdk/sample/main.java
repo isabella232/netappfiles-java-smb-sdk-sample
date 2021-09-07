@@ -5,23 +5,21 @@
 
 package smb.sdk.sample;
 
-import com.ea.async.Async;
-import com.microsoft.azure.CloudException;
-import com.microsoft.azure.management.netapp.v2019_11_01.ActiveDirectory;
-import com.microsoft.azure.management.netapp.v2019_11_01.ServiceLevel;
-import com.microsoft.azure.management.netapp.v2019_11_01.implementation.AzureNetAppFilesManagementClientImpl;
-import com.microsoft.azure.management.netapp.v2019_11_01.implementation.CapacityPoolInner;
-import com.microsoft.azure.management.netapp.v2019_11_01.implementation.NetAppAccountInner;
-import com.microsoft.azure.management.netapp.v2019_11_01.implementation.VolumeInner;
-import com.microsoft.rest.credentials.ServiceClientCredentials;
+import com.azure.core.credential.TokenCredential;
+import com.azure.core.management.AzureEnvironment;
+import com.azure.core.management.profile.AzureProfile;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.azure.resourcemanager.netapp.NetAppFilesManager;
+import com.azure.resourcemanager.netapp.fluent.NetAppManagementClient;
+import com.azure.resourcemanager.netapp.fluent.models.CapacityPoolInner;
+import com.azure.resourcemanager.netapp.fluent.models.NetAppAccountInner;
+import com.azure.resourcemanager.netapp.fluent.models.VolumeInner;
+import com.azure.resourcemanager.netapp.models.ActiveDirectory;
+import com.azure.resourcemanager.netapp.models.ServiceLevel;
 import smb.sdk.sample.common.CommonSdk;
-import smb.sdk.sample.common.ServiceCredentialsAuth;
 import smb.sdk.sample.common.Utils;
 
 import java.util.Collections;
-import java.util.concurrent.CompletableFuture;
-
-import static com.ea.async.Async.await;
 
 public class main
 {
@@ -36,8 +34,7 @@ public class main
 
         try
         {
-            Async.init();
-            runAsync();
+            run();
             Utils.writeConsoleMessage("Sample application successfully completed execution");
         }
         catch (Exception e)
@@ -48,22 +45,22 @@ public class main
         System.exit(0);
     }
 
-    private static CompletableFuture<Void> runAsync()
+    private static void run()
     {
         //---------------------------------------------------------------------------------------------------------------------
         // Setting variables necessary for resources creation - change these to appropriate values related to your environment
         //---------------------------------------------------------------------------------------------------------------------
         boolean cleanup = false;
 
-        String subscriptionId = "<subscription id>";
-        String location = "eastus";
-        String resourceGroupName = "anf01-rg";
-        String vnetName = "vnet";
-        String subnetName = "anf-sn";
-        String anfAccountName = "test-account01";
-        String capacityPoolName = "test-pool01";
+        String subscriptionId = "<subscription-id>";
+        String location = "<location>";
+        String resourceGroupName = "<resource-group-name>";
+        String vnetName = "<vnet-name>";
+        String subnetName = "<subnet-name>";
+        String anfAccountName = "anf-java-example-account";
+        String capacityPoolName = "anf-java-example-pool";
         String capacityPoolServiceLevel = "Standard"; // Valid service levels are: Ultra, Premium, Standard
-        String volumeName = "test-vol01";
+        String volumeName = "anf-java-example-volume";
 
         long capacityPoolSize = 4398046511104L;  // 4TiB which is minimum size
         long volumeSize = 107374182400L;  // 100GiB - volume minimum size
@@ -74,18 +71,14 @@ public class main
         String adFQDN = "testdomain.local";
         String smbServerNamePrefix = "testsmb"; // this needs to be maximum 10 characters in length and during the domain join process a random string gets appended.
 
-        // Authenticating using service principal, refer to README.md file for requirement details
-        ServiceClientCredentials credentials = ServiceCredentialsAuth.getServicePrincipalCredentials(System.getenv("AZURE_AUTH_LOCATION"));
-        if (credentials == null)
-        {
-            return CompletableFuture.completedFuture(null);
-        }
-
-        // Instantiating a new ANF management client
+        // Instantiating a new ANF management client and authenticate
+        AzureProfile profile = new AzureProfile(AzureEnvironment.AZURE);
+        TokenCredential credential = new DefaultAzureCredentialBuilder()
+                .authorityHost(profile.getEnvironment().getActiveDirectoryEndpoint())
+                .build();
         Utils.writeConsoleMessage("Instantiating a new Azure NetApp Files management client...");
-        AzureNetAppFilesManagementClientImpl anfClient = new AzureNetAppFilesManagementClientImpl(credentials);
-        anfClient.withSubscriptionId(subscriptionId);
-        Utils.writeConsoleMessage("Api Version: " + anfClient.apiVersion());
+        NetAppFilesManager manager = NetAppFilesManager
+                .authenticate(credential, profile);
 
         //------------------------------------------------------------------------------------------------------
         // Getting Active Directory Identity's password (from identity that has rights to domain join computers)
@@ -103,7 +96,7 @@ public class main
         Utils.writeConsoleMessage("Creating Azure NetaApp Files Account...");
 
         String[] accountParams = {resourceGroupName, anfAccountName};
-        NetAppAccountInner anfAccount = await(CommonSdk.getResourceAsync(anfClient, accountParams, NetAppAccountInner.class));
+        NetAppAccountInner anfAccount = (NetAppAccountInner) CommonSdk.getResource(manager.serviceClient(), accountParams, NetAppAccountInner.class);
         if (anfAccount == null)
         {
             // Setting up Active Directories Object
@@ -120,11 +113,11 @@ public class main
 
             try
             {
-                anfAccount = await(createANFAccount(anfClient, resourceGroupName, anfAccountName, newAccount));
+                anfAccount = createANFAccount(manager.serviceClient(), resourceGroupName, anfAccountName, newAccount);
             }
-            catch (CloudException e)
+            catch (Exception e)
             {
-                Utils.writeConsoleMessage("An error occurred while creating account: " + e.body().message());
+                Utils.writeConsoleMessage("An error occurred while creating account: " + e.getMessage());
                 throw  e;
             }
         }
@@ -139,7 +132,7 @@ public class main
         Utils.writeConsoleMessage("Creating Capacity Pool...");
 
         String[] poolParams = {resourceGroupName, anfAccountName, capacityPoolName};
-        CapacityPoolInner capacityPool = await(CommonSdk.getResourceAsync(anfClient, poolParams, CapacityPoolInner.class));
+        CapacityPoolInner capacityPool = (CapacityPoolInner) CommonSdk.getResource(manager.serviceClient(), poolParams, CapacityPoolInner.class);
         if (capacityPool == null)
         {
             CapacityPoolInner newCapacityPool = new CapacityPoolInner();
@@ -149,7 +142,7 @@ public class main
 
             try
             {
-                capacityPool = await(createCapacityPool(anfClient, resourceGroupName, anfAccountName, capacityPoolName, newCapacityPool));
+                capacityPool = createCapacityPool(manager.serviceClient(), resourceGroupName, anfAccountName, capacityPoolName, newCapacityPool);
             }
             catch (Exception e)
             {
@@ -168,7 +161,7 @@ public class main
         Utils.writeConsoleMessage("Creating SMB Volume...");
 
         String[] volumeParams = {resourceGroupName, anfAccountName, capacityPoolName, volumeName};
-        VolumeInner volume = await(CommonSdk.getResourceAsync(anfClient, volumeParams, VolumeInner.class));
+        VolumeInner volume = (VolumeInner) CommonSdk.getResource(manager.serviceClient(), volumeParams, VolumeInner.class);
         if (volume == null)
         {
             String subnetId = "/subscriptions/" + subscriptionId + "/resourceGroups/" + resourceGroupName +
@@ -184,7 +177,7 @@ public class main
 
             try
             {
-                volume = await(createSMBVolume(anfClient, resourceGroupName, anfAccountName, capacityPoolName, volumeName, newVolume));
+                volume = createSMBVolume(manager.serviceClient(), resourceGroupName, anfAccountName, capacityPoolName, volumeName, newVolume);
             }
             catch (Exception e)
             {
@@ -215,23 +208,21 @@ public class main
             Utils.writeConsoleMessage("Cleaning up all created resources");
 
             Utils.writeConsoleMessage("Deleting Volume...");
-            anfClient.volumes().delete(resourceGroupName, anfAccountName, capacityPoolName, volumeName);
+            manager.serviceClient().getVolumes().beginDelete(resourceGroupName, anfAccountName, capacityPoolName, volumeName).getFinalResult();
             // ARM workaround to wait for the deletion to complete
-            CommonSdk.waitForNoANFResource(anfClient, volume.id(), VolumeInner.class);
+            CommonSdk.waitForNoANFResource(manager.serviceClient(), volume.id(), VolumeInner.class);
             Utils.writeSuccessMessage("Volume successfully deleted: " + volume.id());
 
             Utils.writeConsoleMessage("Deleting Capacity Pool...");
-            anfClient.pools().delete(resourceGroupName, anfAccountName, capacityPoolName);
-            CommonSdk.waitForNoANFResource(anfClient, capacityPool.id(), CapacityPoolInner.class);
+            manager.serviceClient().getPools().beginDelete(resourceGroupName, anfAccountName, capacityPoolName).getFinalResult();
+            CommonSdk.waitForNoANFResource(manager.serviceClient(), capacityPool.id(), CapacityPoolInner.class);
             Utils.writeSuccessMessage("Capacity Pool successfully deleted: " + capacityPool.id());
 
             Utils.writeConsoleMessage("Deleting ANF Account...");
-            anfClient.accounts().delete(resourceGroupName, anfAccountName);
-            CommonSdk.waitForNoANFResource(anfClient, anfAccount.id(), NetAppAccountInner.class);
+            manager.serviceClient().getAccounts().beginDelete(resourceGroupName, anfAccountName).getFinalResult();
+            CommonSdk.waitForNoANFResource(manager.serviceClient(), anfAccount.id(), NetAppAccountInner.class);
             Utils.writeSuccessMessage("ANF Account successfully deleted: " + anfAccount.id());
         }
-
-        return CompletableFuture.completedFuture(null);
     }
 
 
@@ -243,13 +234,12 @@ public class main
      * @param accountBody The Account body used in the creation
      * @return The newly created ANF Account
      */
-    private static CompletableFuture<NetAppAccountInner> createANFAccount(AzureNetAppFilesManagementClientImpl anfClient, String resourceGroup,
-                                                            String accountName, NetAppAccountInner accountBody)
+    private static NetAppAccountInner createANFAccount(NetAppManagementClient anfClient, String resourceGroup, String accountName, NetAppAccountInner accountBody)
     {
-        NetAppAccountInner anfAccount = anfClient.accounts().createOrUpdate(resourceGroup, accountName, accountBody);
+        NetAppAccountInner anfAccount = anfClient.getAccounts().beginCreateOrUpdate(resourceGroup, accountName, accountBody).getFinalResult();
         Utils.writeSuccessMessage("Account successfully created, resourceId: " + anfAccount.id());
 
-        return CompletableFuture.completedFuture(anfAccount);
+        return anfAccount;
     }
 
     /**
@@ -261,13 +251,12 @@ public class main
      * @param poolBody The Capacity Pool body used in the creation
      * @return The newly created Capacity Pool
      */
-    private static CompletableFuture<CapacityPoolInner> createCapacityPool(AzureNetAppFilesManagementClientImpl anfClient, String resourceGroup,
-                                                              String accountName, String poolName, CapacityPoolInner poolBody)
+    private static CapacityPoolInner createCapacityPool(NetAppManagementClient anfClient, String resourceGroup, String accountName, String poolName, CapacityPoolInner poolBody)
     {
-        CapacityPoolInner capacityPool = anfClient.pools().createOrUpdate(resourceGroup, accountName, poolName, poolBody);
+        CapacityPoolInner capacityPool = anfClient.getPools().beginCreateOrUpdate(resourceGroup, accountName, poolName, poolBody).getFinalResult();
         Utils.writeSuccessMessage("Capacity Pool successfully created, resourceId: " + capacityPool.id());
 
-        return CompletableFuture.completedFuture(capacityPool);
+        return capacityPool;
     }
 
     /**
@@ -280,13 +269,12 @@ public class main
      * @param volumeBody The Volume body used in the creation
      * @return The newly created Volume
      */
-    private static CompletableFuture<VolumeInner> createSMBVolume(AzureNetAppFilesManagementClientImpl anfClient, String resourceGroup,
-                                                           String accountName, String poolName, String volumeName, VolumeInner volumeBody)
+    private static VolumeInner createSMBVolume(NetAppManagementClient anfClient, String resourceGroup, String accountName, String poolName, String volumeName, VolumeInner volumeBody)
     {
-        VolumeInner volume = anfClient.volumes().createOrUpdate(resourceGroup, accountName, poolName, volumeName, volumeBody);
+        VolumeInner volume = anfClient.getVolumes().beginCreateOrUpdate(resourceGroup, accountName, poolName, volumeName, volumeBody).getFinalResult();
         Utils.writeSuccessMessage("Volume successfully created, resourceId: " + volume.id());
         Utils.writeConsoleMessage("SMB Server FQDN: " + volume.mountTargets().get(0).smbServerFqdn());
 
-        return CompletableFuture.completedFuture(volume);
+        return volume;
     }
 }
