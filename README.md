@@ -117,7 +117,7 @@ The following table describes all files within this solution:
     git clone https://github.com/Azure-Samples/netappfiles-java-smb-sdk-sample
     ```
 1. Change folder to **.\netappfiles-java-smb-sdk-sample**:
-1. Make sure you have the azureauth.json and its environment variable with the path to it defined (as previously described).
+1. Make sure you have the environment variables previously described defined.
 1. Make sure the JAVA_HOME environment variable is pointing to version 11 of Java or newer (see Prerequisites for instructions).
 1. In the main.java class, change the values of the variables within the runAsync() function to reflect your environment.
 1. Compile the console application:
