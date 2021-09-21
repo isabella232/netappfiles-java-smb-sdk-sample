@@ -6,6 +6,7 @@
 package smb.sdk.sample;
 
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.exception.AzureException;
 import com.azure.core.management.AzureEnvironment;
 import com.azure.core.management.profile.AzureProfile;
 import com.azure.identity.DefaultAzureCredentialBuilder;
@@ -115,7 +116,7 @@ public class main
             {
                 anfAccount = createANFAccount(manager.serviceClient(), resourceGroupName, anfAccountName, newAccount);
             }
-            catch (Exception e)
+            catch (AzureException e)
             {
                 Utils.writeConsoleMessage("An error occurred while creating account: " + e.getMessage());
                 throw  e;
