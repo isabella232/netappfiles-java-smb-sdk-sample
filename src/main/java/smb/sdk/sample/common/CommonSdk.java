@@ -5,14 +5,8 @@
 
 package smb.sdk.sample.common;
 
-import com.microsoft.azure.management.netapp.v2019_11_01.implementation.AzureNetAppFilesManagementClientImpl;
-import com.microsoft.azure.management.netapp.v2019_11_01.implementation.CapacityPoolInner;
-import com.microsoft.azure.management.netapp.v2019_11_01.implementation.NetAppAccountInner;
-import com.microsoft.azure.management.netapp.v2019_11_01.implementation.SnapshotInner;
-import com.microsoft.azure.management.netapp.v2019_11_01.implementation.VolumeInner;
-import rx.Observable;
-
-import java.util.concurrent.CompletableFuture;
+import com.azure.resourcemanager.netapp.fluent.NetAppManagementClient;
+import com.azure.resourcemanager.netapp.fluent.models.*;
 
 // Contains public methods for SDK related operations
 public class CommonSdk
@@ -28,50 +22,53 @@ public class CommonSdk
      * @param clazz Valid class types: NetAppAccountInner, CapacityPoolInner, VolumeInner, SnapshotInner
      * @return Valid resource T
      */
-    public static <T> CompletableFuture<T> getResourceAsync(AzureNetAppFilesManagementClientImpl anfClient, String[] parameters, Class<T> clazz)
+    public static <T> Object getResource(NetAppManagementClient anfClient, String[] parameters, Class<T> clazz)
     {
         try
         {
             switch (clazz.getSimpleName())
             {
                 case "NetAppAccountInner":
-                    Observable<NetAppAccountInner> account = anfClient.accounts().getByResourceGroupAsync(
+                    return anfClient.getAccounts().getByResourceGroup(
                             parameters[0],
                             parameters[1]);
-                    return CompletableFuture.completedFuture((T) account.toBlocking().first());
 
-                case "CapacityPoolInner":
-                    Observable<CapacityPoolInner> capacityPool = anfClient.pools().getAsync(
+                case "SnapshotPolicyInner":
+                    return anfClient.getSnapshotPolicies().get(
                             parameters[0],
                             parameters[1],
                             parameters[2]);
-                    return CompletableFuture.completedFuture((T) capacityPool.toBlocking().first());
+
+                case "CapacityPoolInner":
+                    return anfClient.getPools().get(
+                            parameters[0],
+                            parameters[1],
+                            parameters[2]);
 
                 case "VolumeInner":
-                    Observable<VolumeInner> volume = anfClient.volumes().getAsync(
+                    return anfClient.getVolumes().get(
                             parameters[0],
                             parameters[1],
                             parameters[2],
                             parameters[3]);
-                    return CompletableFuture.completedFuture((T) volume.toBlocking().first());
 
                 case "SnapshotInner":
-                    Observable<SnapshotInner> snapshot = anfClient.snapshots().getAsync(
+                    return anfClient.getSnapshots().get(
                             parameters[0],
                             parameters[1],
                             parameters[2],
                             parameters[3],
                             parameters[4]);
-                    return CompletableFuture.completedFuture((T) snapshot.toBlocking().first());
             }
         }
         catch (Exception e)
         {
-            Utils.writeErrorMessage("Error finding resource - " + e.getMessage());
-            throw e;
+            if (e.getMessage().contains("Status code 404"))
+                return null;
+            Utils.writeWarningMessage("Error finding resource - " + e.getMessage());
         }
 
-        return CompletableFuture.completedFuture(null);
+        return null;
     }
 
     /**
@@ -80,7 +77,7 @@ public class CommonSdk
      * @param resourceId Resource id of the resource that was deleted
      * @param clazz Valid class types: NetAppAccountInner, CapacityPoolInner, VolumeInner, SnapshotInner
      */
-    public static <T> void waitForNoANFResource(AzureNetAppFilesManagementClientImpl anfClient, String resourceId, Class<T> clazz)
+    public static <T> void waitForNoANFResource(NetAppManagementClient anfClient, String resourceId, Class<T> clazz)
     {
         waitForNoANFResource(anfClient, resourceId, 10, 60, clazz);
     }
@@ -94,7 +91,7 @@ public class CommonSdk
      * @param retries Number of times polling will be performed
      * @param clazz Valid class types: NetAppAccountInner, CapacityPoolInner, VolumeInner, SnapshotInner
      */
-    public static <T> void waitForNoANFResource(AzureNetAppFilesManagementClientImpl anfClient, String resourceId, int intervalInSec, int retries, Class<T> clazz)
+    public static <T> void waitForNoANFResource(NetAppManagementClient anfClient, String resourceId, int intervalInSec, int retries, Class<T> clazz)
     {
         for (int i = 0; i < retries; i++)
         {
@@ -105,42 +102,40 @@ public class CommonSdk
                 switch (clazz.getSimpleName())
                 {
                     case "NetAppAccountInner":
-                        Observable<NetAppAccountInner> account = anfClient.accounts().getByResourceGroupAsync(ResourceUriUtils.getResourceGroup(resourceId),
+                        NetAppAccountInner account = anfClient.getAccounts().getByResourceGroup(ResourceUriUtils.getResourceGroup(resourceId),
                                 ResourceUriUtils.getAnfAccount(resourceId));
-                        if (account.toBlocking().first() == null)
+                        if (account == null)
                             return;
 
                         continue;
 
                     case "CapacityPoolInner":
-                        Observable<CapacityPoolInner> pool = anfClient.pools().getAsync(ResourceUriUtils.getResourceGroup(resourceId),
+                        CapacityPoolInner pool = anfClient.getPools().get(ResourceUriUtils.getResourceGroup(resourceId),
                                 ResourceUriUtils.getAnfAccount(resourceId),
                                 ResourceUriUtils.getAnfCapacityPool(resourceId));
-                        if (pool.toBlocking().first() == null)
+                        if (pool == null)
                             return;
 
                         continue;
 
                     case "VolumeInner":
-                        Observable<VolumeInner> volume = anfClient.volumes().getAsync(ResourceUriUtils.getResourceGroup(resourceId),
+                        VolumeInner volume = anfClient.getVolumes().get(ResourceUriUtils.getResourceGroup(resourceId),
                                 ResourceUriUtils.getAnfAccount(resourceId),
                                 ResourceUriUtils.getAnfCapacityPool(resourceId),
                                 ResourceUriUtils.getAnfVolume(resourceId));
-                        if (volume.toBlocking().first() == null)
+                        if (volume == null)
                             return;
 
                         continue;
 
                     case "SnapshotInner":
-                        Observable<SnapshotInner> snapshot = anfClient.snapshots().getAsync(ResourceUriUtils.getResourceGroup(resourceId),
+                        SnapshotInner snapshot = anfClient.getSnapshots().get(ResourceUriUtils.getResourceGroup(resourceId),
                                 ResourceUriUtils.getAnfAccount(resourceId),
                                 ResourceUriUtils.getAnfCapacityPool(resourceId),
                                 ResourceUriUtils.getAnfVolume(resourceId),
                                 ResourceUriUtils.getAnfSnapshot(resourceId));
-                        if (snapshot.toBlocking().first() == null)
+                        if (snapshot == null)
                             return;
-
-                        continue;
                 }
             }
             catch (Exception e)
